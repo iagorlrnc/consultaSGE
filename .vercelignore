@@ -1,0 +1,30 @@
+# ==============================================================================
+# VERCEL IGNORE - BLINDAGEM DE PRODUÇÃO (LGPD & ECA)
+# Impede o envio de bases de dados locais, resumos e segredos para a nuvem
+# ==============================================================================
+
+# Bases de dados brutas e dumps contendo dados pessoais de estudantes
+bd_json/
+*.json.gz
+*.sql
+*.dump
+students_sample.sql
+
+# Resumos locais contendo métricas e amostras
+data_summary.json
+enrollment_summary.json
+import_to_supabase.js
+
+# Segredos locais e credenciais de desenvolvimento
+.env
+.env.*
+!.env.example
+
+# Servidor Express legado (não utilizado na SPA em produção)
+server/
+
+# Logs e arquivos temporários de compilação
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db

@@ -1,0 +1,50 @@
+{
+  "name": "siss-student-search",
+  "version": "1.0.0",
+  "description": "Sistema de Consulta de Estudantes SISS/SGE por CPF - React, TypeScript e Tailwind CSS",
+  "type": "module",
+  "main": "server/server.ts",
+  "scripts": {
+    "dev": "vite",
+    "server": "tsx server/server.ts",
+    "build": "tsc && vite build",
+    "start": "tsx server/server.ts",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "siss",
+    "sge",
+    "cpf",
+    "consulta",
+    "estudante",
+    "react",
+    "typescript",
+    "tailwind"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.114.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "lucide-react": "^1.40.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.4.1",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "autoprefixer": "^10.5.4",
+    "postcss": "^8.5.28",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2"
+  }
+}
