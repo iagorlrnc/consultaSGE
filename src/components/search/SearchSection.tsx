@@ -58,7 +58,7 @@ export const SearchSection: React.FC<SearchSectionProps> = ({
         <div className="search-title-area">
           <h2>Consultar Estudante</h2>
           <p>
-            Digite o CPF, Nome ou ID do aluno para visualizar a ficha cadastral completa, escola vinculada e histórico de matrículas
+            Digite o CPF do aluno para visualizar a ficha cadastral completa, escola vinculada e histórico de matrículas
           </p>
         </div>
 
@@ -73,7 +73,7 @@ export const SearchSection: React.FC<SearchSectionProps> = ({
             <input
               type="text"
               id="cpfInput"
-              placeholder="Digite o CPF, Nome ou ID do aluno"
+              placeholder="Digite o CPF do aluno"
               maxLength={80}
               value={inputValue}
               onChange={handleInputChange}
