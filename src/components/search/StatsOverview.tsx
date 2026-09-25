@@ -25,8 +25,8 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({
 
   return (
     <section className="empty-state">
-      <div className="empty-icon">
-        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <div className="empty-icon" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ margin: '0 auto', display: 'block' }}>
           <circle cx="11" cy="11" r="8" />
           <line x1="21" y1="21" x2="16.65" y2="16.65" />
           <line x1="11" y1="8" x2="11" y2="8" />
