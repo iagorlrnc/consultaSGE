@@ -110,14 +110,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let lastError: any = null;
     let authData: any = null;
 
-    for (const emailToUse of candidateEmails) {
+    for (let i = 0; i < candidateEmails.length; i++) {
+      const emailToUse = candidateEmails[i];
+      // IMPORTANTE: Tokens Turnstile são de uso único. Só repassamos no primeiro teste para não queimar token repetido
+      const currentToken = i === 0 ? turnstileToken : undefined;
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email: emailToUse,
         password: password,
-        options: turnstileToken ? { captchaToken: turnstileToken } : undefined
+        options: currentToken ? { captchaToken: currentToken } : undefined
       });
 
-      if (!error && data.session) {
+      if (!error && data?.session) {
         authData = data;
         lastError = null;
         break;
@@ -126,6 +130,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (lastError || !authData?.session) {
+      // Se for erro específico de captcha retornado pelo Supabase Auth
+      const errMsg = lastError?.message || '';
+      if (errMsg.toLowerCase().includes('captcha')) {
+        throw new Error('Falha na validação do Captcha pelo Supabase: ' + errMsg);
+      }
+
       try {
         const session = await loginApi(cleanId, password, turnstileToken);
         if (session && session.token) {
@@ -136,7 +146,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } catch {}
           return;
         }
-      } catch {}
+      } catch (apiErr: any) {
+        if (apiErr?.message && apiErr.message.toLowerCase().includes('captcha')) {
+          throw apiErr;
+        }
+      }
 
       // VULN-009: Mensagem unificada anti-enumeração
       throw new Error('Credenciais inválidas. Verifique os dados informados.');

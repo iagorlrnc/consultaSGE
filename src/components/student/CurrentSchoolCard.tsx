@@ -2,7 +2,6 @@ import React from 'react';
 import { Enrollment, FlattenedAcademicHistory } from '../../types/student';
 import { parseEducationModality } from '../../lib/modality';
 import { formatDate, getSituationBadgeClass } from '../../lib/formatters';
-import { CopyButton } from '../ui/CopyButton';
 
 interface CurrentSchoolCardProps {
   primaryEnrollment: Enrollment | null;
@@ -29,7 +28,6 @@ export const CurrentSchoolCard: React.FC<CurrentSchoolCardProps> = ({
   );
 
   const situation = activeClass?.situation || 'Cursando';
-  const enrollmentNum = primaryEnrollment?.enrollment || 'Não informada';
   const classStart = activeClass?.classStartDate
     ? formatDate(activeClass.classStartDate)
     : 'Início do Ano Letivo';
@@ -110,20 +108,6 @@ export const CurrentSchoolCard: React.FC<CurrentSchoolCardProps> = ({
               <span className={`badge ${getSituationBadgeClass(situation)}`}>
                 {situation}
               </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="fields-row">
-          <div className="data-field">
-            <label>Número da Matrícula</label>
-            <div className="copy-field">
-              <span className="code-value font-mono">{enrollmentNum}</span>
-              <CopyButton
-                textToCopy={enrollmentNum}
-                onCopied={(txt) => onNotify(`Matrícula copiada: ${txt}`)}
-                title="Copiar Matrícula"
-              />
             </div>
           </div>
           <div className="data-field">

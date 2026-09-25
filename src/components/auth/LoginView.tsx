@@ -36,7 +36,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNotify }) => {
 
   // Cloudflare Turnstile state
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [turnstileError, setTurnstileError] = useState<boolean>(false);
+  const [turnstileError, setTurnstileError] = useState<string | null>(null);
+  const [scriptLoadTimeout, setScriptLoadTimeout] = useState<boolean>(false);
   const turnstileContainerRef = useRef<HTMLDivElement>(null);
   const turnstileWidgetId = useRef<string | null>(null);
 
@@ -45,7 +46,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNotify }) => {
   const [lockedUntil, setLockedUntil] = useState<number>(0);
   const [lockCountdown, setLockCountdown] = useState<number>(0);
 
-  const siteKey = import.meta.env?.VITE_CLOUDFLARE_SITE_KEY || '';
+  const siteKey = (import.meta.env?.VITE_CLOUDFLARE_SITE_KEY || '').trim();
+  const isCaptchaConfigured = Boolean(siteKey);
 
   // Countdown timer para o rate limit client-side
   useEffect(() => {
@@ -69,46 +71,71 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNotify }) => {
     return () => clearInterval(timer);
   }, [lockedUntil]);
 
-  // Inicializar Cloudflare Turnstile
+  // Função centralizada para renderizar o widget Turnstile
+  const initTurnstile = () => {
+    if (!isCaptchaConfigured) {
+      console.warn('VITE_CLOUDFLARE_SITE_KEY não configurada no arquivo de ambiente.');
+      return;
+    }
+
+    if (
+      window.turnstile &&
+      turnstileContainerRef.current &&
+      !turnstileWidgetId.current
+    ) {
+      try {
+        turnstileWidgetId.current = window.turnstile.render(
+          turnstileContainerRef.current,
+          {
+            sitekey: siteKey,
+            callback: (token: string) => {
+              setTurnstileToken(token);
+              setTurnstileError(null);
+              setErrorMsg(null);
+            },
+            'expired-callback': () => {
+              setTurnstileToken(null);
+            },
+            'error-callback': () => {
+              setTurnstileToken(null);
+              setTurnstileError(
+                'Falha na validação do Cloudflare Turnstile. Se estiver em produção, adicione o domínio do seu site na lista de "Allowed Domains" no painel da Cloudflare (Erro 110200) ou verifique se um bloqueador de anúncios impediu a requisição.'
+              );
+            },
+            theme: 'light'
+          }
+        );
+      } catch (e: any) {
+        console.error('Erro ao renderizar widget Turnstile:', e);
+        setTurnstileToken(null);
+        setTurnstileError('Erro ao inicializar o componente de captcha.');
+      }
+    }
+  };
+
+  const handleReloadCaptcha = () => {
+    setTurnstileError(null);
+    setScriptLoadTimeout(false);
+    setTurnstileToken(null);
+
+    if (window.turnstile && turnstileWidgetId.current) {
+      try {
+        window.turnstile.remove(turnstileWidgetId.current);
+      } catch {}
+      turnstileWidgetId.current = null;
+    }
+
+    setTimeout(() => {
+      initTurnstile();
+    }, 100);
+  };
+
+  // Inicializar Cloudflare Turnstile e observar carregamento do script
   useEffect(() => {
+    if (!isCaptchaConfigured) return;
+
     let checkInterval: any = null;
-
-    const initTurnstile = () => {
-      if (!siteKey) {
-        console.warn('VITE_CLOUDFLARE_SITE_KEY não configurada no arquivo de ambiente.');
-        return;
-      }
-
-      if (
-        window.turnstile &&
-        turnstileContainerRef.current &&
-        !turnstileWidgetId.current
-      ) {
-        try {
-          turnstileWidgetId.current = window.turnstile.render(
-            turnstileContainerRef.current,
-            {
-              sitekey: siteKey,
-              callback: (token: string) => {
-                setTurnstileToken(token);
-                setTurnstileError(false);
-                setErrorMsg(null);
-              },
-              'expired-callback': () => {
-                setTurnstileToken(null);
-              },
-              'error-callback': () => {
-                setTurnstileToken(null);
-                setTurnstileError(true);
-              },
-              theme: 'light'
-            }
-          );
-        } catch (e) {
-          setTurnstileToken(null);
-        }
-      }
-    };
+    let timeoutTimer: any = null;
 
     if (window.turnstile) {
       initTurnstile();
@@ -117,12 +144,22 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNotify }) => {
         if (window.turnstile) {
           initTurnstile();
           clearInterval(checkInterval);
+          if (timeoutTimer) clearTimeout(timeoutTimer);
         }
-      }, 500);
+      }, 300);
+
+      // Se após 6 segundos o script da Cloudflare não carregar (ex: firewall/adblocker)
+      timeoutTimer = setTimeout(() => {
+        if (!window.turnstile) {
+          setScriptLoadTimeout(true);
+          clearInterval(checkInterval);
+        }
+      }, 6000);
     }
 
     return () => {
       if (checkInterval) clearInterval(checkInterval);
+      if (timeoutTimer) clearTimeout(timeoutTimer);
       if (window.turnstile && turnstileWidgetId.current) {
         try {
           window.turnstile.remove(turnstileWidgetId.current);
@@ -130,7 +167,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNotify }) => {
         } catch {}
       }
     };
-  }, [siteKey]);
+  }, [siteKey, isCaptchaConfigured]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,15 +192,21 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNotify }) => {
       return;
     }
 
-    // 2. Verificação estrita do Cloudflare Turnstile (Anti-robô)
-    if (!turnstileToken) {
-      setErrorMsg('Por favor, valide o captcha anti-robôs da Cloudflare antes de entrar.');
+    // 2. Verificação do Cloudflare Turnstile (quando configurado no ambiente)
+    if (isCaptchaConfigured && !turnstileToken) {
+      if (turnstileError) {
+        setErrorMsg('Erro na verificação anti-robô. Clique em "Recarregar Captcha" abaixo antes de prosseguir.');
+      } else if (scriptLoadTimeout) {
+        setErrorMsg('O script de verificação não carregou. Verifique sua conexão com a internet ou extensões.');
+      } else {
+        setErrorMsg('Por favor, valide o captcha anti-robôs da Cloudflare antes de entrar.');
+      }
       return;
     }
 
     setLoading(true);
     try {
-      await login(trimmedIdentifier, password, turnstileToken);
+      await login(trimmedIdentifier, password, turnstileToken || undefined);
       onNotify('Bem-vindo ao Backup SGE!');
       setAttemptCount(0);
       setLockedUntil(0);
@@ -318,27 +361,128 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNotify }) => {
             </div>
 
             {/* Cloudflare Turnstile Captcha Widget */}
-            <div className="turnstile-wrapper" style={{ margin: '1rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <div ref={turnstileContainerRef} id="cloudflare-turnstile"></div>
-              {turnstileToken && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.4rem', fontSize: '0.75rem', color: '#059669', fontWeight: 600 }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                  <span>Verificação anti-robô concluída</span>
+            <div className="turnstile-wrapper" style={{ margin: '1rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+              {!isCaptchaConfigured && (
+                <div style={{
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: '8px',
+                  background: '#fef3c7',
+                  border: '1px solid #fde68a',
+                  color: '#92400e',
+                  fontSize: '0.78rem',
+                  lineHeight: '1.45',
+                  textAlign: 'center',
+                  width: '100%'
+                }}>
+                  <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                      <line x1="12" y1="9" x2="12" y2="13"></line>
+                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    <span>Aviso de Ambiente (Produção)</span>
+                  </div>
+                  <div style={{ marginTop: '0.25rem', color: '#78350f' }}>
+                    A variável <code>VITE_CLOUDFLARE_SITE_KEY</code> não está configurada no painel da Vercel. O login está liberado em modo de contingência.
+                  </div>
                 </div>
+              )}
+
+              {isCaptchaConfigured && (
+                <>
+                  <div ref={turnstileContainerRef} id="cloudflare-turnstile" style={{ minHeight: '65px' }}></div>
+                  
+                  {turnstileToken && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.4rem', fontSize: '0.75rem', color: '#059669', fontWeight: 600 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                      <span>Verificação anti-robô concluída</span>
+                    </div>
+                  )}
+
+                  {turnstileError && (
+                    <div style={{
+                      marginTop: '0.5rem',
+                      padding: '0.65rem 0.85rem',
+                      borderRadius: '8px',
+                      background: '#fef2f2',
+                      border: '1px solid #fca5a5',
+                      color: '#b91c1c',
+                      fontSize: '0.78rem',
+                      lineHeight: '1.45',
+                      textAlign: 'center',
+                      width: '100%'
+                    }}>
+                      <div style={{ fontWeight: 700, marginBottom: '0.25rem' }}>Falha no Cloudflare Turnstile</div>
+                      <div style={{ color: '#991b1b', marginBottom: '0.5rem' }}>{turnstileError}</div>
+                      <button
+                        type="button"
+                        onClick={handleReloadCaptcha}
+                        style={{
+                          padding: '0.35rem 0.75rem',
+                          background: '#dc2626',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '0.75rem',
+                          cursor: 'pointer',
+                          fontWeight: 600
+                        }}
+                      >
+                        Recarregar Captcha
+                      </button>
+                    </div>
+                  )}
+
+                  {scriptLoadTimeout && !turnstileError && !turnstileToken && (
+                    <div style={{
+                      marginTop: '0.5rem',
+                      padding: '0.65rem 0.85rem',
+                      borderRadius: '8px',
+                      background: '#fffbeb',
+                      border: '1px solid #fcd34d',
+                      color: '#92400e',
+                      fontSize: '0.78rem',
+                      lineHeight: '1.45',
+                      textAlign: 'center',
+                      width: '100%'
+                    }}>
+                      <div style={{ fontWeight: 600 }}>Script do Turnstile demorou a responder</div>
+                      <div style={{ marginTop: '0.2rem', marginBottom: '0.4rem', color: '#78350f' }}>
+                        Verifique se seu navegador ou firewall está bloqueando conexões para <code>challenges.cloudflare.com</code>.
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleReloadCaptcha}
+                        style={{
+                          padding: '0.35rem 0.75rem',
+                          background: '#d97706',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '0.75rem',
+                          cursor: 'pointer',
+                          fontWeight: 600
+                        }}
+                      >
+                        Tentar novamente
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
             <button
               type="submit"
-              disabled={loading || lockCountdown > 0 || !turnstileToken}
+              disabled={loading || lockCountdown > 0 || (isCaptchaConfigured && !turnstileToken)}
               className="btn btn-auth-submit"
               style={{
-                opacity: !turnstileToken || lockCountdown > 0 ? 0.65 : 1,
-                cursor: !turnstileToken || lockCountdown > 0 ? 'not-allowed' : 'pointer'
+                opacity: (isCaptchaConfigured && !turnstileToken) || lockCountdown > 0 ? 0.65 : 1,
+                cursor: (isCaptchaConfigured && !turnstileToken) || lockCountdown > 0 ? 'not-allowed' : 'pointer'
               }}
-              title={!turnstileToken ? 'Valide o captcha da Cloudflare para habilitar o login' : ''}
+              title={isCaptchaConfigured && !turnstileToken ? 'Valide o captcha da Cloudflare para habilitar o login' : ''}
             >
               {loading ? (
                 <>

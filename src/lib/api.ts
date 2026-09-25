@@ -19,11 +19,13 @@ export async function loginApi(username: string, password: string, captchaToken?
   let lastError: any = null;
   let authData: any = null;
 
-  for (const emailToAuth of candidateEmails) {
+  for (let i = 0; i < candidateEmails.length; i++) {
+    const emailToAuth = candidateEmails[i];
+    const currentToken = i === 0 ? captchaToken : undefined;
     const { data, error } = await supabase.auth.signInWithPassword({
       email: emailToAuth,
       password: String(password),
-      options: captchaToken ? { captchaToken } : undefined
+      options: currentToken ? { captchaToken: currentToken } : undefined
     });
 
     if (!error && data?.session) {
@@ -34,8 +36,12 @@ export async function loginApi(username: string, password: string, captchaToken?
     lastError = error;
   }
 
-  // VULN-009: Mensagem unificada anti-enumeração
   if (lastError || !authData?.session) {
+    const errMsg = lastError?.message || '';
+    if (errMsg.toLowerCase().includes('captcha')) {
+      throw new Error('Falha na validação do Captcha pelo Supabase: ' + errMsg);
+    }
+    // VULN-009: Mensagem unificada anti-enumeração
     throw new Error('Credenciais inválidas. Verifique os dados informados.');
   }
 

@@ -9,9 +9,6 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-// =============================================================================
-// HTTPS REDIRECTION (Production)
-// =============================================================================
 if (process.env.NODE_ENV === 'production') {
   app.use((req: Request, res: Response, next: NextFunction) => {
     const proto = req.headers['x-forwarded-proto'];
@@ -22,9 +19,6 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-// =============================================================================
-// SUPABASE SETUP
-// =============================================================================
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || '';
 const USE_SUPABASE = Boolean(SUPABASE_URL && SUPABASE_KEY && !SUPABASE_URL.includes('seu-projeto'));
