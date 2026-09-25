@@ -1,16 +1,26 @@
 import React, { useState } from 'react';
-import { Student } from '../../types/student';
+import { Student, Enrollment, FlattenedAcademicHistory } from '../../types/student';
 import { formatDate, calculateAge, GENDER_MAP, RACE_MAP } from '../../lib/formatters';
+import { formatCpf } from '../../lib/cpf';
 import { getIbgeCity } from '../../data/ibgeTocantins';
 import { CopyButton } from '../ui/CopyButton';
 import { IbgeLookupModal } from './IbgeLookupModal';
 
 interface StudentHeaderProps {
   student: Student;
+  primaryEnrollment?: Enrollment | null;
+  activeClass?: FlattenedAcademicHistory | null;
+  inep?: string;
   onNotify?: (msg: string) => void;
 }
 
-export const StudentHeader: React.FC<StudentHeaderProps> = ({ student, onNotify }) => {
+export const StudentHeader: React.FC<StudentHeaderProps> = ({
+  student,
+  primaryEnrollment,
+  activeClass,
+  inep,
+  onNotify
+}) => {
   const [isIbgeModalOpen, setIsIbgeModalOpen] = useState(false);
 
   const birthIso = student.birthDate;
@@ -35,11 +45,26 @@ export const StudentHeader: React.FC<StudentHeaderProps> = ({ student, onNotify 
   const state = student.address?.state || 'TO';
   const ibgeCity = getIbgeCity(city);
 
-  const handleCopyIbge = (code: string) => {
-    if (onNotify) {
-      onNotify(`Código IBGE ${code} (${ibgeCity?.name || city}) copiado!`);
-    }
-  };
+  // 1. CPF
+  const rawCpf = student.documents?.cpf;
+  const displayCpf = rawCpf ? formatCpf(rawCpf) : 'Não informado';
+  const copyCpf = rawCpf ? formatCpf(rawCpf) : '';
+
+  // 2. Código do Aluno
+  const stId = String(
+    typeof student.studentId === 'object' && student.studentId && '$numberLong' in student.studentId
+      ? student.studentId.$numberLong
+      : student.studentId || '--'
+  );
+  const copyStId = stId && stId !== '--' ? stId : '';
+
+  // 3. Código INEP
+  const inepCode = inep || primaryEnrollment?.school?.inep || activeClass?.schoolInep || 'Não informado';
+  const copyInep = inepCode && inepCode !== 'Não informado' && inepCode !== '--' ? inepCode : '';
+
+  // 4. Código IBGE
+  const ibgeCode = ibgeCity ? ibgeCity.id : 'N/D';
+  const copyIbge = ibgeCity ? ibgeCity.id : '';
 
   return (
     <>
@@ -48,12 +73,6 @@ export const StudentHeader: React.FC<StudentHeaderProps> = ({ student, onNotify 
           <div className="student-names">
             <div className="student-title-row">
               <h2>{student.name || 'NOME NÃO INFORMADO'}</h2>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <span className="badge badge-success">Matrícula Ativa</span>
-                <span className="badge badge-state" style={{ fontSize: '0.72rem', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>
-                  Exibição Completa
-                </span>
-              </div>
             </div>
 
             {student.socialName && student.socialName.trim() && (
@@ -76,39 +95,90 @@ export const StudentHeader: React.FC<StudentHeaderProps> = ({ student, onNotify 
               <span className="meta-tag">Cor/Raça: {raceText}</span>
               <span className="meta-tag">{city} / {state}</span>
 
-              {/* Informação do Código IBGE da cidade do estudante com opção de copiar e consulta de todas as cidades */}
-              <div className="ibge-header-badge-group">
-                <span
-                  className="meta-tag ibge-meta-tag"
-                  title={ibgeCity ? `Código IBGE oficial de ${ibgeCity.name}: ${ibgeCity.id}` : `Código IBGE não identificado para "${city}"`}
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                    <circle cx="12" cy="10" r="3" />
-                  </svg>
-                  <span>IBGE:</span>
-                  <strong className="font-mono">{ibgeCity ? ibgeCity.id : 'N/D'}</strong>
-                  {ibgeCity && (
-                    <CopyButton
-                      textToCopy={ibgeCity.id}
-                      onCopied={() => handleCopyIbge(ibgeCity.id)}
-                      title={`Copiar código IBGE (${ibgeCity.id})`}
-                    />
-                  )}
-                </span>
+              <button
+                type="button"
+                className="ibge-lookup-trigger-btn"
+                onClick={() => setIsIbgeModalOpen(true)}
+                title="Consultar códigos IBGE de todas as 139 cidades do Tocantins"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <span>Cidades (TO)</span>
+              </button>
+            </div>
 
-                <button
-                  type="button"
-                  className="ibge-lookup-trigger-btn"
-                  onClick={() => setIsIbgeModalOpen(true)}
-                  title="Consultar códigos IBGE de todas as 139 cidades do Tocantins"
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
-                  <span>Cidades (TO)</span>
-                </button>
+            {/* Seção Dados Essenciais */}
+            <div className="essential-data-block">
+              <div className="essential-data-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+                <span>Dados Essenciais</span>
+              </div>
+
+              <div className="essential-data-grid">
+                {/* CPF */}
+                <div className="essential-item">
+                  <span className="essential-item-label">CPF</span>
+                  <div className="essential-item-value">
+                    <span className="font-mono">{displayCpf}</span>
+                    {copyCpf && (
+                      <CopyButton
+                        textToCopy={copyCpf}
+                        onCopied={(txt) => onNotify?.(`CPF copiado: ${txt}`)}
+                        title="Copiar CPF"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Código do Aluno */}
+                <div className="essential-item">
+                  <span className="essential-item-label">Código do Aluno</span>
+                  <div className="essential-item-value">
+                    <span className="font-mono">{stId}</span>
+                    {copyStId && (
+                      <CopyButton
+                        textToCopy={copyStId}
+                        onCopied={(txt) => onNotify?.(`Código do Aluno copiado: ${txt}`)}
+                        title="Copiar Código do Aluno"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Código INEP */}
+                <div className="essential-item">
+                  <span className="essential-item-label">Código INEP</span>
+                  <div className="essential-item-value">
+                    <span className="font-mono">{inepCode}</span>
+                    {copyInep && (
+                      <CopyButton
+                        textToCopy={copyInep}
+                        onCopied={(txt) => onNotify?.(`Código INEP copiado: ${txt}`)}
+                        title="Copiar Código INEP"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Código IBGE */}
+                <div className="essential-item">
+                  <span className="essential-item-label">Código IBGE</span>
+                  <div className="essential-item-value">
+                    <span className="font-mono">{ibgeCode}</span>
+                    {copyIbge && (
+                      <CopyButton
+                        textToCopy={copyIbge}
+                        onCopied={(txt) => onNotify?.(`Código IBGE (${city}) copiado: ${txt}`)}
+                        title={`Copiar código IBGE (${ibgeCode})`}
+                      />
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

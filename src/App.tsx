@@ -199,7 +199,12 @@ export const App: React.FC = () => {
 
         {!loading && student && (
           <section className="result-section">
-            <StudentHeader student={student} onNotify={handleNotify} />
+            <StudentHeader
+              student={student}
+              primaryEnrollment={primaryEnrollment}
+              activeClass={activeClass}
+              onNotify={handleNotify}
+            />
 
             <div className="details-grid">
               <CurrentSchoolCard
@@ -209,7 +214,7 @@ export const App: React.FC = () => {
                 onNotify={handleNotify}
               />
               <DocumentsCard documents={student.documents} onNotify={handleNotify} />
-              <PersonalDataCard student={student} />
+              <PersonalDataCard student={student} onNotify={handleNotify} />
               <AddressCard address={student.address} />
               <AcademicHistoryCard history={allHistory} />
               <FiliationsCard filiations={student.filiations} />

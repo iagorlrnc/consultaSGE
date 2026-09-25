@@ -1,12 +1,14 @@
 import React from 'react';
 import { Student } from '../../types/student';
 import { formatDate, calculateAge, GENDER_MAP, RACE_MAP, DISABILITY_MAP } from '../../lib/formatters';
+import { CopyButton } from '../ui/CopyButton';
 
 interface PersonalDataCardProps {
   student: Student;
+  onNotify?: (msg: string) => void;
 }
 
-export const PersonalDataCard: React.FC<PersonalDataCardProps> = ({ student }) => {
+export const PersonalDataCard: React.FC<PersonalDataCardProps> = ({ student, onNotify }) => {
   const birthIso = student.birthDate;
   const birthFormatted = formatDate(birthIso);
   const age = calculateAge(birthIso);
@@ -74,7 +76,16 @@ export const PersonalDataCard: React.FC<PersonalDataCardProps> = ({ student }) =
         <div className="fields-row">
           <div className="data-field">
             <label>Código do Aluno</label>
-            <span className="code-value font-mono">{stId}</span>
+            <div className="copy-field">
+              <span className="code-value font-mono">{stId}</span>
+              {stId && stId !== '--' && (
+                <CopyButton
+                  textToCopy={stId}
+                  onCopied={(txt) => onNotify?.(`Código do Aluno copiado: ${txt}`)}
+                  title="Copiar Código do Aluno"
+                />
+              )}
+            </div>
           </div>
           <div className="data-field">
             <label>E-mail</label>

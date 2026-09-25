@@ -2,6 +2,7 @@ import React from 'react';
 import { Enrollment, FlattenedAcademicHistory } from '../../types/student';
 import { parseEducationModality } from '../../lib/modality';
 import { formatDate, getSituationBadgeClass } from '../../lib/formatters';
+import { CopyButton } from '../ui/CopyButton';
 
 interface CurrentSchoolCardProps {
   primaryEnrollment: Enrollment | null;
@@ -56,8 +57,15 @@ export const CurrentSchoolCard: React.FC<CurrentSchoolCardProps> = ({
               <strong>Município:</strong> {schoolCity}
             </span>
             <span>•</span>
-            <span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
               <strong>Código INEP:</strong> <span className="font-mono">{schoolInep}</span>
+              {schoolInep && schoolInep !== 'Não informado' && schoolInep !== '--' && (
+                <CopyButton
+                  textToCopy={schoolInep}
+                  onCopied={(txt) => onNotify(`Código INEP copiado: ${txt}`)}
+                  title="Copiar Código INEP"
+                />
+              )}
             </span>
           </div>
         </div>
