@@ -30,16 +30,35 @@ export const SearchSection: React.FC<SearchSectionProps> = ({
     setInputValue(currentCpfValue);
   }, [currentCpfValue]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value;
-    // Se o usuário estiver digitando letras, permite busca por Nome
-    const hasLetters = /[a-zA-ZÀ-ÿ]/.test(raw);
-    if (hasLetters) {
-      setInputValue(raw);
-    } else {
-      const masked = applyCpfMask(raw);
-      setInputValue(masked);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Permite teclas de navegação, edição e atalhos (Ctrl/Cmd)
+    if (
+      e.key === 'Backspace' ||
+      e.key === 'Delete' ||
+      e.key === 'Tab' ||
+      e.key === 'Escape' ||
+      e.key === 'Enter' ||
+      e.key === 'ArrowLeft' ||
+      e.key === 'ArrowRight' ||
+      e.key === 'Home' ||
+      e.key === 'End' ||
+      e.ctrlKey ||
+      e.metaKey
+    ) {
+      return;
     }
+
+    // Bloqueia qualquer caractere que não seja número (0 a 9)
+    if (!/^[0-9]$/.test(e.key)) {
+      e.preventDefault();
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Garante que apenas dígitos sejam aceitos mesmo ao colar texto
+    const digitsOnly = e.target.value.replace(/\D/g, '');
+    const masked = applyCpfMask(digitsOnly);
+    setInputValue(masked);
   };
 
   const handleClear = () => {
@@ -74,9 +93,11 @@ export const SearchSection: React.FC<SearchSectionProps> = ({
               type="text"
               id="cpfInput"
               placeholder="Digite o CPF do aluno"
-              maxLength={80}
+              maxLength={14}
+              inputMode="numeric"
               value={inputValue}
               onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
               autoFocus
             />
             {inputValue && (
