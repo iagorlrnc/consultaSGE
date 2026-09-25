@@ -1076,17 +1076,13 @@ body {
   align-items: center;
   justify-content: center;
   position: relative;
-  background: radial-gradient(circle at 50% 10%, #1e293b 0%, #0f172a 60%, #090d16 100%);
+  background: #ffffff;
   padding: 1.5rem;
   overflow: hidden;
 }
 
 .auth-backdrop-shapes {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
-  z-index: 1;
+  display: none;
 }
 
 .auth-backdrop-shapes .shape {
@@ -1169,13 +1165,13 @@ body {
 .auth-titles h2 {
   font-size: 1.65rem;
   font-weight: 800;
-  color: #ffffff;
+  color: #0f172a;
   letter-spacing: -0.02em;
   line-height: 1.2;
 }
 
 .auth-subtitle {
-  color: #94a3b8;
+  color: #64748b;
   font-size: 0.88rem;
   margin-top: 0.35rem;
   font-weight: 500;
@@ -1185,27 +1181,27 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: #cbd5e1;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #475569;
   padding: 0.3rem 0.75rem;
   border-radius: 9999px;
   font-size: 0.74rem;
   font-weight: 600;
   margin-top: 0.75rem;
-  backdrop-filter: blur(8px);
 }
 
 .auth-card {
   background: #ffffff;
   border-radius: 20px;
   padding: 2.2rem 2rem;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
 }
 
 .auth-card-head {
   margin-bottom: 1.4rem;
+  text-align: center;
 }
 
 .auth-card-head h3 {
@@ -1213,6 +1209,7 @@ body {
   font-weight: 800;
   color: #0f172a;
   letter-spacing: -0.01em;
+  text-align: center;
 }
 
 .auth-card-head p {
@@ -1220,6 +1217,7 @@ body {
   color: #64748b;
   margin-top: 0.25rem;
   line-height: 1.4;
+  text-align: center;
 }
 
 .auth-alert {

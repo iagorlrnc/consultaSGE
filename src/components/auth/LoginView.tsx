@@ -266,11 +266,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNotify }) => {
         </div>
 
         <div className="auth-card">
-          <div className="auth-card-head">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-              <h3>Autenticação Segura</h3>
+          <div className="auth-card-head" style={{ textAlign: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '0.4rem' }}>
+              <h3>Autenticação</h3>
             </div>
-            <p>Informe suas credenciais de acesso.</p>
+            <p style={{ margin: '0 auto', textAlign: 'center' }}>Informe suas credenciais de acesso.</p>
           </div>
 
           {errorMsg && (
@@ -397,7 +397,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNotify }) => {
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                         <polyline points="20 6 9 17 4 12"></polyline>
                       </svg>
-                      <span>Verificação anti-robô concluída</span>
+                      <span>Verificação concluída</span>
                     </div>
                   )}
 
