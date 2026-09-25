@@ -200,29 +200,57 @@ export async function getSamplesApi(): Promise<SampleStudentMeta[]> {
 }
 
 /**
- * Retorna estatísticas consolidadas diretamente do Supabase
+ * Retorna estatísticas consolidadas exclusivamente do banco de dados (Supabase).
+ * Em caso de falha de conexão ou dados não encontrados, lança exceção para ser
+ * tratada visualmente na interface.
  */
 export async function getStatsApi(): Promise<StatsData> {
+  // 1. Tenta buscar via RPC otimizada 'get_system_stats'
   try {
-    const [{ count: studentCount }, { count: enrollmentCount }] = await Promise.all([
+    const { data: rpcData, error: rpcError } = await supabase.rpc('get_system_stats');
+    if (!rpcError && rpcData && typeof rpcData.totalRecords === 'number') {
+      return {
+        totalRecords: Number(rpcData.totalRecords),
+        totalEnrollments: Number(rpcData.totalEnrollments || 0),
+        uniqueSchools: Number(rpcData.uniqueSchools || 0),
+        withCpf: Number(rpcData.withCpf || 0),
+        withoutCpf: Number(rpcData.withoutCpf || 0)
+      };
+    }
+  } catch {
+    // Prossegue para tentativa direta nas tabelas caso a RPC ainda não tenha sido criada
+  }
+
+  // 2. Consulta direta de contagem nas tabelas do Supabase
+  try {
+    const [studentsRes, enrollmentsRes, withCpfRes] = await Promise.all([
       supabase.from('students').select('*', { count: 'exact', head: true }),
-      supabase.from('enrollments').select('*', { count: 'exact', head: true })
+      supabase.from('enrollments').select('*', { count: 'exact', head: true }),
+      supabase.from('students').select('*', { count: 'exact', head: true }).not('clean_cpf', 'is', null).neq('clean_cpf', '')
     ]);
 
+    if (studentsRes.error || enrollmentsRes.error) {
+      throw new Error('Falha de comunicação: o dado não foi encontrado no banco de dados.');
+    }
+
+    if (studentsRes.count === null || enrollmentsRes.count === null) {
+      throw new Error('Falha de comunicação: o dado não foi encontrado no banco de dados.');
+    }
+
+    const totalRecords = studentsRes.count;
+    const totalEnrollments = enrollmentsRes.count;
+    const withCpf = withCpfRes.count ?? 0;
+    const withoutCpf = Math.max(0, totalRecords - withCpf);
+
     return {
-      totalRecords: studentCount ?? 239449,
-      withCpf: 230917,
-      withoutCpf: 8532,
-      totalEnrollments: enrollmentCount ?? 361748,
-      uniqueSchools: 495
+      totalRecords,
+      totalEnrollments,
+      uniqueSchools: 0,
+      withCpf,
+      withoutCpf
     };
-  } catch {
-    return {
-      totalRecords: 239449,
-      withCpf: 230917,
-      withoutCpf: 8532,
-      totalEnrollments: 361748,
-      uniqueSchools: 495
-    };
+  } catch (err: any) {
+    throw new Error('Falha de comunicação: o dado não foi encontrado no banco de dados.');
   }
 }
+

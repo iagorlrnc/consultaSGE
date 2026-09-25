@@ -352,10 +352,6 @@ app.post('/api/login', async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, message: 'Erro interno no processamento do login.' });
   }
 });
-  } catch {
-    return res.status(500).json({ success: false, message: 'Erro interno no processamento do login.' });
-  }
-});
 
 // POST /api/logout
 app.post('/api/logout', (req: Request, res: Response) => {
@@ -481,8 +477,35 @@ app.get('/api/search', requireAuth, async (req: AuthenticatedRequest, res: Respo
 });
 
 // GET /api/stats — Protected: requires real authentication
-app.get('/api/stats', requireAuth, (_req: Request, res: Response) => {
-  return res.status(200).json(stats);
+app.get('/api/stats', requireAuth, async (_req: Request, res: Response) => {
+  if (supabase) {
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('get_system_stats');
+      if (!rpcError && rpcData && typeof rpcData.totalRecords === 'number') {
+        return res.status(200).json(rpcData);
+      }
+
+      const [stRes, enRes, cpfRes] = await Promise.all([
+        supabase.from('students').select('*', { count: 'exact', head: true }),
+        supabase.from('enrollments').select('*', { count: 'exact', head: true }),
+        supabase.from('students').select('*', { count: 'exact', head: true }).not('clean_cpf', 'is', null).neq('clean_cpf', '')
+      ]);
+
+      if (!stRes.error && !enRes.error && stRes.count !== null && enRes.count !== null) {
+        return res.status(200).json({
+          totalRecords: stRes.count,
+          totalEnrollments: enRes.count,
+          uniqueSchools: 0,
+          withCpf: cpfRes.count ?? 0,
+          withoutCpf: Math.max(0, stRes.count - (cpfRes.count ?? 0))
+        });
+      }
+    } catch {}
+  }
+
+  return res.status(503).json({
+    error: 'Falha de comunicação: o dado não foi encontrado no banco de dados.'
+  });
 });
 
 // Static files in production

@@ -46,39 +46,38 @@ export default async function handler(req, res) {
     return res.status(200).json(cachedStats);
   }
 
-  let stats = {
-    totalRecords: 239449,
-    withCpf: 230917,
-    withoutCpf: 8532,
-    totalEnrollments: 361748,
-    uniqueSchools: 495,
-    genderCounts: {},
-    raceCounts: {},
-    disabilityCounts: {},
-    topCities: []
-  };
+  if (supabase) {
+    try {
+      // 1. Tenta RPC
+      const { data: rpcData, error: rpcError } = await supabase.rpc('get_system_stats');
+      if (!rpcError && rpcData && typeof rpcData.totalRecords === 'number') {
+        cachedStats = rpcData;
+        return res.status(200).json(rpcData);
+      }
 
-  try {
-    const dsPath = path.join(process.cwd(), 'data_summary.json');
-    if (fs.existsSync(dsPath)) {
-      const ds = JSON.parse(fs.readFileSync(dsPath, 'utf8'));
-      stats.totalRecords = ds.totalObjects || 239449;
-      stats.withCpf = ds.validCpfCount || 0;
-      stats.withoutCpf = ds.emptyCpfCount || 0;
-      stats.genderCounts = ds.genderValues || {};
-      stats.raceCounts = ds.raceColorValues || {};
-      stats.disabilityCounts = ds.disabilityTypeValues || {};
-      stats.topCities = ds.topCities || [];
-    }
+      // 2. Consulta direta
+      const [stRes, enRes, cpfRes] = await Promise.all([
+        supabase.from('students').select('*', { count: 'exact', head: true }),
+        supabase.from('enrollments').select('*', { count: 'exact', head: true }),
+        supabase.from('students').select('*', { count: 'exact', head: true }).not('clean_cpf', 'is', null).neq('clean_cpf', '')
+      ]);
 
-    const esPath = path.join(process.cwd(), 'enrollment_summary.json');
-    if (fs.existsSync(esPath)) {
-      const es = JSON.parse(fs.readFileSync(esPath, 'utf8'));
-      stats.totalEnrollments = es.totalRecords || 361748;
-      stats.uniqueSchools = es.uniqueSchoolsCount || 0;
-    }
-  } catch {}
+      if (!stRes.error && !enRes.error && stRes.count !== null && enRes.count !== null) {
+        const liveStats = {
+          totalRecords: stRes.count,
+          totalEnrollments: enRes.count,
+          uniqueSchools: 0,
+          withCpf: cpfRes.count ?? 0,
+          withoutCpf: Math.max(0, stRes.count - (cpfRes.count ?? 0))
+        };
+        cachedStats = liveStats;
+        return res.status(200).json(liveStats);
+      }
+    } catch {}
+  }
 
-  cachedStats = stats;
-  return res.status(200).json(stats);
+  return res.status(503).json({
+    error: 'Falha de comunicação: o dado não foi encontrado no banco de dados.'
+  });
 }
+

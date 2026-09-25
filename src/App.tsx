@@ -29,11 +29,27 @@ export const App: React.FC = () => {
   const [student, setStudent] = useState<Student | null>(null);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [stats, setStats] = useState<StatsData | null>(null);
+  const [statsLoading, setStatsLoading] = useState<boolean>(true);
+  const [statsError, setStatsError] = useState<string | null>(null);
   const [samples, setSamples] = useState<SampleStudentMeta[]>([]);
+
+  const fetchStats = async () => {
+    setStatsLoading(true);
+    setStatsError(null);
+    try {
+      const data = await getStatsApi();
+      setStats(data);
+    } catch (err: any) {
+      setStats(null);
+      setStatsError(err?.message || 'Falha de comunicação: o dado não foi encontrado no banco de dados.');
+    } finally {
+      setStatsLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (isAuthenticated) {
-      getStatsApi().then(setStats).catch(() => {});
+      fetchStats();
       getSamplesApi().then(setSamples).catch(() => {});
     }
   }, [isAuthenticated]);
@@ -202,7 +218,12 @@ export const App: React.FC = () => {
         )}
 
         {!loading && !student && (
-          <StatsOverview stats={stats} />
+          <StatsOverview
+            stats={stats}
+            loading={statsLoading}
+            error={statsError}
+            onRetry={fetchStats}
+          />
         )}
       </main>
 
